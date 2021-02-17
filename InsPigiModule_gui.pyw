@@ -15,198 +15,245 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 class FileAndHash:
     """
-    Classe qui s'occupe de tout se qui est manipulation de données /
-    et de cryptographie
+    Class that takes care of all data manipulation / and cryptography
     """
     def __init__(self):
-        # Initialiser la liste des info
+        # Initialize the dico
         try:
             with open("data_file.json", "r") as file:
-                self.UserName = json.load(file)
+                self.dico_data = json.load(file)
+                # we open the file and put it in a dictionary
         except:
-            # si le fichiez ne peut pas etre ouvert, on crer un dico en local 
-            self.UserName = {}
+           # if the file cannot be opened, we create a dico locally
+            self.dico_data = {}
 
     def write_json(self):
         """
-        Permet d'ecrire dans le dico
+        Function that allows you to write in the dictionary
         """
         with open("data_file.json", "w") as write_file:
-            json.dump(self.UserName, write_file, indent=4)
+            json.dump(self.dico_data, write_file, indent=4)
+            # we open the file and write "self.dico_data" in the dictionary
 
-    def generateHash(self, pw):
+    def generate_hash(self, key):
         """
-        Genere un hash avec la string( password ) donné
-        
-        pw -> string, qui produira le hash
+        Generate a hash with the character string enter
+        return the hash, the salt that was used and a second salt for later, 
+        in hexadecimal form.
+
+            Parameters
+                key -> string, Character chain that will produce the hash
         """
         salt = os.urandom(32)
-        # Creation du salt pour le mdp
+        # Creation of the salt for the password 
+        # use of urandom for random encryption
         salt2 = os.urandom(32)
-        # Creation du salt pour la data
-        key = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, 200000)
-        # On genere la clé et on return les 3
-        return key.hex(), salt.hex(), salt2.hex()
+        # Creation of the salt for the data
+        # use of urandom for random encryption
 
-    def goodhash(self, Id, pw):
+        hash1 = hashlib.pbkdf2_hmac("sha256", key.encode("utf-8"), salt, 200000)
+        # We generate the hash with the hashlib function, 
+        # iteration of the sha256 200,000 times with the salt  
+        return hash1.hex(), salt.hex(), salt2.hex()
+
+    def good_hash(self, Id, pw):
         """
-        Fonction qui verifie si la string( password ) donné est egale a celle stocker
-        dans le dico
+        Function that checks if the given string is equal to the stored one
+        in dictionary,
+        returns true if the two hashes are the same, else, it False
 
-        Id -> string, contenu dans le jason qui point un utilisateur,
-              permet de retrouver le salt et le mot de passe a comparer
-
-        pw -> string, que l'on va comparer quand elle sera hash
+            Parameters
+                Id -> string, that indicates where the user is stored in the .json
+                pw -> string, that we will compare with the one 
+                      stored in the dictionary
         """
-        salt = self.UserName[Id]["SaltPw"]
+        salt = self.dico_data[Id]["SaltPw"]
         salt = bytes.fromhex(salt)
-        # On recupere le salt du .json
+        # we get the salt from the .json
         new_key = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, 200000)
         new_key = new_key.hex()
-        # On encode un nouveau hash avec le soi disant mdp et le salt du .json
-        old_key = self.UserName[Id]["hashpw"]
-        # On recupere l'ancien hash de l'utilisateur
+        # We encode a new hash with the so-called password and the salt of the .json
+        old_key = self.dico_data[Id]["hashpw"]
+        # We retrieve the hash stored with the user
 
-        if old_key == new_key:# Si les hash sont identique ( meme string de depart)
-            self.keyData = self.creatKey(Id, pw) # Creation d'une cle pour les données
+        if old_key == new_key:
+            # If the two hashes are identical
+            # then the password is equal to the character string
+            self.keyData = self.creat_key(Id, pw) 
+            # We create a key to be able to encode the data associated with the account
             return True
-        elif old_key != new_key:# Si les hash ne sont pas identique (pas la meme string de depart)
+        elif old_key != new_key:
+            # If the hashes are not identical
+            # We know that the character string is not the same as the password
             return False 
 
-    def creatKey(self, Id, pw):
+    def creat_key(self, Id, pw):
         """
-        Crer une clé pour encoder les données dans le dico
+        Creation of a key to save the data in the dictionary, return the key
 
-        Id -> string, contenu dans le jason qui point un utilisateur,
-              permet de retrouver le salt
-        
-        pw -> string, qui permet de donner la cle une fois associer au salt
+            Parameters: 
+                Id -> string, that indicates where the user is stored in the .json
+                pw -> string,string, character chain that will produce the hash
 
         """
-        pw = pw.encode() # on encode en byte
-        salt = self.UserName[Id]["SaltData"] # on trouve le salt
+        pw = pw.encode()
+        # We encode in utf-8
+        salt = self.dico_data[Id]["SaltData"] 
         salt = bytes.fromhex(salt) 
+        # we get the salt from the .json
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
             iterations=100000,
-            backend=default_backend(),
-        ) # creation de la key 
-        key = base64.urlsafe_b64encode(kdf.derive(pw))  # Can only use kdf once
+            backend=default_backend()) 
+            # Creation of the encryption key for the data
+            # 200_000 iteration of the sha256
+        key = base64.urlsafe_b64encode(kdf.derive(pw)) 
+        # We encode the key with the kdf and base64 method
         return key 
 
-    def Encrypting(self, message):
+    def encryptions(self, message):
         """
-        Fonction qui encrypte a l'aide de la clé stocker dans self.keyData
+        Function that encrypts the message string using the key stored in the dico
 
-        message -> string, a encrypter 
+            Parameters:
+                message -> string, data to encrypt
         """
-        message = message.encode()
+        message = message.encode() 
+        # We encode the string in utf-8
         f = Fernet(self.keyData)
-        encrypted = f.encrypt(
-            message
-        )  # Encrypt the bytes. The returning object is of type bytes
-        return encrypted
+        encrypted = f.encrypt(message)  
+        # Encrypt the bytes
+        return encrypted.hex()
+        # we return the Hexadecimal version of the byte encrypt
 
-    def Decrypting(self, data):
+    def decryption(self, data):
         """
-        Fonction qui decrypt a l'aide de la clé stocker dans self.keyData
+        Function that decrypts the message string using the key stored in the dico
+            Parameters:
+                message -> string, data to decrypt
+        """
+        data = bytes.fromhex(data) 
+        # We convert the Hexadecimal to Bytes
+        f = Fernet(self.keyData)
+        decrypted = f.decrypt(data) 
+        # we Decrypt the bytes
+        return decrypted 
+        # we return the decryptions of the byte, a string
+
+    def flush_key_data(self):
+        """
+        function taht reset key for crypting/decrpting the data
+        """
+        self.keyData = None 
         
-        message -> string, a decrypt 
-        """
-        f = Fernet(self.keyData)
-        decrypted = f.decrypt(
-            data
-        )  # Decrypt the bytes. The returning object is of type bytes
-        return decrypted
-
 
 class Compte(FileAndHash):
     """
-    Classe qui s'occupe de tout se qui est manipulaation du compte
+    class that takes care of all that is account manipulation
     """
     def __init__(self):
-        # initalisation
+        # initialization
         super().__init__()
-        # initialise la classe parent 
+        # initializes the parent class
         self.connected = False
         self.user_connect = None
-        # Personne n'est connecter
 
     def connection(self, Id, pw):
         """
-        Fonction qui permet a l'utilisateur de se connecter
+        Function that allows the user to connect to his account
 
             Parameters:
-                Id -> string, qui permet de chercher l utilisateur dans le dico
-                pw -> string, qui est sensé etre le mdp de l user, verification par le hash
+                Id -> string, User Name that indicates where the user is stored in the .json
+                pw -> string, User Password, used to connect to the account
         """
         if self.connected == False:
-            if Id in self.UserName:  # Si le compte existe
-                goodpw = self.goodhash(Id, pw) # boolean , True si c le bon mdp False autrement
+            # if no one is connected
+            if Id in self.dico_data: 
+                # If id is in the dictionary 
+                # so that the user already has an account
+                goodpw = self.good_hash(Id, pw) 
+                # We see if the password is the same as the one associated with the account
                 if goodpw == True:
-                    self.connected = True # un utilisateur est connecter 
-                    self.user_connect = Id # specification de l'utilisateur 
+                    # if they are the same
+                    self.connected = True 
+                    # We indicate that a user is connected
+                    self.user_connect = Id 
+                    # we say who is connecting
                     return "Login success"
                 elif goodpw == False: 
+                    # If the two password aren't the same
                     return "Login Failed, Your Username and/or Password do not match"
             else:
+                # if the account dosen't existe 
                 return "Login Failed, Your Username and/or Password do not match"
         else:
+            # if someone is already connected
             return "Sorry, you are already login"
 
     def deconnection(self):
         """ 
-        Fonction qui deconnecte l'user
+        Function that allows the user to be disconnected from his account
         """
         if self.connected == True:
+            # if someone is connected
+            self.flush_key_data()
             self.connected = False
+            self.user_connect = None
+            # We say no one is connected
             return "Deconnection success"
         else:
+            # if no one is connected
             return "You are already deconneted "
 
-    def suppr(self):
+    def delete_account(self):
         """
-        Fonction pour supprimer le compte d'un utilisateur 
+        function that allows you to delete your account
         """
         if self.connected == True:
-            del self.UserName[self.user_connect]  # supprimer la cle du dico
-            self.write_json() # ecrit dans le fichiez
+            # if someone is connected
+            del self.dico_data[self.user_connect]  
+            # we remove it from the dictionary
+            self.write_json() 
+            # we write the changes in the dictionary
             return "Delete success"
         else:
+            # if no one is connected
             return "Sorry, you have to be connected to do this action"
 
     def inscription(self, Id, pw):
         """
-        Fonction qui permet de s'inscrire
+        Function that allows you to register
 
             Parameters:
-
-                Id -> string, Nom d utilisateur
-                pw -> string, Mot de passe 
+                Id -> string, The account username
+                pw -> string, User password
         """
-
         if self.connected == False:
-            if Id in self.UserName: # si il existe deja 
+            # if no one is connected
+            if Id in self.dico_data: 
+                # if the username is already in the dictionnary 
                 return "Username already takeout"
-            hashpw, saltpw, saltData = self.generateHash(pw) # renvois les hashs et les salts associer au compte
-
-            self.UserName[Id] = {
+            hash_pw, salt_pw, salt_data = self.generate_hash(pw) 
+            # we hash the password to store it so that it cannot be read in the JSON
+            # we we also recover the salt and the salt associated with the key for encrypting the data 
+            self.dico_data[Id] = {
                 "User": Id,
-                "hashpw": hashpw,
-                "SaltPw": saltpw,
-                "SaltData": saltData,
+                "hashpw": hash_pw,
+                "SaltPw": salt_pw,
+                "SaltData": salt_data,
                 "Data": None,
-            } # Ajout dans le dico
+            } # we write this on the dico
             self.write_json() # On ecrit le nouveau dico 
             return "Incription succes"
         else:
+            # if someone is connected we can't do this 
             return "You dosen't have to be connected to perform this"
 
     def return_etat_connection(self):
         """
-        Renvois l'etat de connection
+        We return the connection status
         """
         return self.connected
 
@@ -216,266 +263,309 @@ class Compte(FileAndHash):
         """
         return self.user_connect
 
-    def writeData(self, data):
+    def write_data(self, data):
         """
-        Ecrire dans la data
+        function to  write the data in the dictionary
 
             Parameters:
-                data -> string, que on veut ecrire 
+                data -> string, information we write to the file
         """ 
-        data = self.Encrypting(data) # On crypt l'input de l'utilisateur 
-        data = data.decode("utf-8") # on la converti
-        Id = self.return_connected_user() # on recuper l'utilisateur connecter
-        self.UserName[Id]["Data"] = data # on recrit par dessu les données de l'utlisateur 
-        self.write_json() # on ecrit le nouveau dico 
+        data = self.encryptions(data) 
+        # we encrypt the information
+        Id = self.return_connected_user() 
+        #we look which user to connect
+        self.dico_data[Id]["Data"] = data 
+        # we replace user data with new ones
+        self.write_json() 
+        # we update the dictionary
 
-    def readData(self):
+    def read_data(self):
         """
-        lire dans la data
+        function to read the data of the user, return a string 
         """ 
-        data = self.UserName[self.user_connect]["Data"] # On recupere la data de l'utilisateur Id 
+        data = self.dico_data[self.user_connect]["Data"] 
+        # we retrieve the data associated with the user connected 
         if data == None:
+            # if there is no data
             return "Empty"
-        data = data.encode()  # On la converti 
-        data = self.Decrypting(data)  # on la decrypte avec la clé de l'utilisateur 
+        data = self.decryption(data)  
+        # we decrypt the data
         return data
 
 
 class Application(Compte):
     """
-    Une classe pour gerer la Gui de l'application
+    a class to manage the graphical interface
     """
     def __init__(self,fenetre):
         super().__init__()
         self.fen = fenetre
+        # the main app 
 
         self.fen.title("InsPigiModule")
         # pathfile = os.path.dirname(os.path.abspath(__file__))
         # self.fen.iconphoto(True, PhotoImage(file=pathfile + '\icone.png'))
         # self.fen.geometry("450x400")
         self.policeMenu = ('Helvetic', 10)
-        self.initUx()
+        # we indicate the police
+        self.init_ux_first_panel()
+        self.sign_in_panel()
 
-    def initUx(self):
-        self.Frame_First_Panel = Frame(self.fen, bd="0.5")
-        self.Frame_First_Panel.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        # Frame qui permet de centrer les 3 autres dans la fenetre 
+    def init_ux_first_panel(self):
+        """
+        Class which allows to display the frames of the first window
+        """
+        self.frame_first_panel = Frame(self.fen, bd="0.5")
+        self.frame_first_panel.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        # Main frame, allowing to center the others
 
-        WelcomeBackFrame = Frame(self.Frame_First_Panel,)
-        WelcomeBackFrame.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        # Frame qui permet d'afficher le texte Welcome Back
+        label_up = Frame(self.frame_first_panel,)
+        label_up.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        # Frame that contains the text above
 
-        InscriptionFrame = Frame(self.Frame_First_Panel,)
-        InscriptionFrame.grid(column=0, row=2, padx=5, pady=10, sticky=N)
-        # Frame qui permet de gerer les deux inscription
+        inscriptions_frame = Frame(self.frame_first_panel,)
+        inscriptions_frame.grid(column=0, row=2, padx=5, pady=10, sticky=N)
+        # Frame which contains the button to switch to the other menu
 
-        Frame_Box = Frame(self.Frame_First_Panel, bd="2",  bg="#000000")
-        Frame_Box.grid(column=0, row=1, padx=5, pady=10, sticky=N)
-        # Frame qui sert de boite pour les modules de connections
+        frame_box_connections = Frame(self.frame_first_panel, bd="2",  bg="#000000")
+        frame_box_connections.grid(column=0, row=1, padx=5, pady=10, sticky=N)
+        # Frame used to center the connection module
 
-        Frame_Box_2 = Frame(Frame_Box,)
-        Frame_Box_2.grid(column=0, row=1, padx=0, pady=0, sticky=N)
-        # Permet de separer la box bleu en deux
+        frame_box_connections2 = Frame(frame_box_connections,)
+        frame_box_connections2.grid(column=0, row=1, padx=0, pady=0, sticky=N)
+        # Frame which allows to separate the frame in two
 
-        Frame_Box_Pw = Frame(Frame_Box_2, )
-        Frame_Box_Pw.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        # Frame avec les inputs dedans
+        frame_input = Frame(frame_box_connections2, )
+        frame_input.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        # Frame with the inputs inside
 
-        self.LabelAbove = Label(WelcomeBackFrame, text="Welcome Back :", font = self.policeMenu)
-        self.LabelAbove.grid(column=0, row=0, padx=5, pady=5, sticky=S)
-        # Texte Welcome back
-        
-        self.Button_In = Button(Frame_Box_2, text="Sign In",font = self.policeMenu, command=self.connectionGui)
-        self.Button_In.grid(column=0, row=1, padx=5, pady=10, sticky=N)
+        self.label_above = Label(label_up, text=" ", font = self.policeMenu)
+        self.label_above.grid(column=0, row=0, padx=5, pady=5, sticky=S)
+        # Text displayed above the window
+
+        self.button_connection_panel = Button(frame_box_connections2, text=" ",font = self.policeMenu, command=self.connection_gui)
+        self.button_connection_panel.grid(column=0, row=1, padx=5, pady=10, sticky=N)
         # Button pour se connecter 
 
-        self.LabelInfoConnection = Label(Frame_Box_2, text= "", fg="#F00000")
-        self.LabelInfoConnection.grid(column=0, row=2, padx=5, pady=5, sticky=N)
-        self.LabelInfoConnection.configure(font=("Helvetic", 10, "italic"))
+        self.label_error = Label(frame_box_connections2, text= " ", fg="#F00000")
+        self.label_error.grid(column=0, row=2, padx=5, pady=5, sticky=N)
+        self.label_error.configure(font=("Helvetic", 10, "italic"))
+        # text to display errors
 
+        self.label_below = Label( inscriptions_frame, text=" ", font = self.policeMenu,)
+        self.label_below.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        # text for the label below 
 
-        self.LabelSign = Label( InscriptionFrame, text="Don't have an account ?", font = self.policeMenu,)
-        self.LabelSign.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        # text for Don't have an account ?
-
-        self.Button_Sign = Button(InscriptionFrame, text="Sign Up", font = self.policeMenu, command=self.SignUPaccountPannel)
-        self.Button_Sign.grid(column=1, row=0, padx=5, pady=10)
+        self.boutton_milieu = Button(inscriptions_frame, text=" ", font = self.policeMenu, command=self.sign_up_panel)
+        self.boutton_milieu.grid(column=1, row=0, padx=5, pady=10)
         # Button pour se connecter 
 
-        self.EntryId = Entry(Frame_Box_Pw, width=25, fg='Grey', font = self.policeMenu,)
+        self.EntryId = Entry(frame_input, width=25, fg='Grey', font = self.policeMenu,)
         EntryIdText = 'Username :'
         self.EntryId.insert(0,EntryIdText)
-        
         self.EntryId.bind("<FocusIn>", lambda args: self.focus_in_entry_box(self.EntryId))
         self.EntryId.bind("<FocusOut>", lambda args: self.focus_out_entry_box(self.EntryId, EntryIdText))
-
         self.EntryId.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        # Input du UserName
+        # inputs for username
 
-        self.EntryPw = Entry(Frame_Box_Pw, width=25, fg='Grey', font = self.policeMenu,)
+        self.EntryPw = Entry(frame_input, width=25, fg='Grey', font = self.policeMenu,)
         EntryPwText = 'Password :'
         self.EntryPw.insert(0,EntryPwText)
-
         self.EntryPw.bind("<FocusIn>", lambda args: self.focus_in_entry_box(self.EntryPw))
         self.EntryPw.bind("<FocusOut>", lambda args: self.focus_out_entry_box(self.EntryPw, EntryPwText))
-
         self.EntryPw.grid(column=0, row=1, padx=5, pady=10, sticky=N)
-        # Input du Password
+        # inputs for the password
 
-        self.SignINaccountPannel()
+    def sign_in_panel(self):
+        """
+        Function that allows to switch the main display to connect
+        """
+        self.label_above.config(text="Welcome Back :")
+        self.button_connection_panel.config(text="Connection",command = self.connection_gui)
+        self.label_below.config(text="Don't have an account ?")
+        self.boutton_milieu.config(text="Sign Up", command=self.sign_up_panel)
+        self.label_error.configure(text=" ")
+        # we configure the new texts and buttons
 
-    def SignINaccountPannel(self):
+    def sign_up_panel(self):
         """
-        Fonction qui permet de basculer l'affiche principal en SignIn
+        Function that allows to switch the main display to register
         """
-        self.LabelAbove.config(text="Welcome Back :")
-        self.Button_In.config(text="Connection",command = self.connectionGui)
-        self.LabelSign.config(text="Don't have an account ?")
-        self.Button_Sign.config(text="Sign Up", command=self.SignUPaccountPannel)
-        self.LabelInfoConnection.configure(text=" ")
-
-    def SignUPaccountPannel(self):
-        """
-        Fonction qui permet de basculer l'affiche principal en SignUp
-        """
-        self.LabelAbove.config(text="Create a new account :")
-        self.Button_In.config(text="Create a new account", command = self.inscriptionGui)
-        self.LabelSign.config(text="Already have a account ?")
-        self.Button_Sign.config(text="Sign In", command=self.SignINaccountPannel)
-        self.LabelInfoConnection.configure(text=" ")
+        self.label_above.config(text="Create a new account :")
+        self.button_connection_panel.config(text="Create a new account", command = self.inscription_gui)
+        self.label_below.config(text="Already have a account ?")
+        self.boutton_milieu.config(text="Sign In", command=self.sign_in_panel)
+        self.label_error.configure(text=" ")
+         # we configure the new texts and buttons
 
     def focus_out_entry_box(self, widget, widget_text):
         """
-        Fonction pour afficher du texte dans les entry non utiliser
+        functions to display text in the entry if no text is entered
         """
         if widget['fg'] == 'Black' and len(widget.get()) == 0:
+            # if the color of the entered text is black, and there is nothing written in it
             widget.delete(0, END)
+            # we delete to be sure
             widget['fg'] = 'Grey'
+            # we change the color to be grey
             widget.insert(0, widget_text)
+            # we insert the text 
 
     def focus_in_entry_box(self, widget):
         """
-        Fonction pour afficher du texte dans les entry non utiliser 2
+        Function to delete the text displayed when nothing is entered
         """
         if widget['fg'] == 'Grey':
+            # if the color is grey
             widget['fg'] = 'Black'
+            # we change the color to black
             widget.delete(0, END)
+            # we delete all 
 
-    def GetValidEntry(self, widget):
+    def get_valid_entry(self, widget):
         """
-        Fonction qui permet de savoir si on a un message d'erreur ou si on peut rentrer
+        function to check if the information entered in the fields is correct
         """
         if widget['fg'] == 'Grey' or widget.get() == "":
-            self.LabelInfoConnection.configure(text="All entry must be completed")
+            # if the color of the widget is grey , or if the lenght of the input is 0 
+            self.label_error.configure(text="All entry must be completed")
+            # We show that on the labelerror 
             return False
         else:
-            return widget.get()
+            # if the entry is corect
+            return widget.get() 
             
-    def connectionGui(self):
+    def connection_gui(self):
         """
-        Fonction qui permet de se connecter a l'aide de la gui
+        Function that allows you to connect from the graphical interface
+        call when you click on the button
         """
-        Id = self.GetValidEntry(self.EntryId)
-        Pw =  self.GetValidEntry(self.EntryPw)
+        Id = self.get_valid_entry(self.EntryId)
+        # we get the username
+        Pw =  self.get_valid_entry(self.EntryPw)
+        # we get the password
         if Id and Pw != False:
+            # if the two inpus are not wrong
             etat = super().connection(Id, Pw)
+            # we get what the connection returns
             if etat == "Login success":
-                print("Connecter")
-                self.connectedUx()
+                # if it good
+                self.connected_ux()
             else:
-                self.LabelInfoConnection.configure(text=etat)
+                # if it not login success
+                self.label_error.configure(text=etat)
+                # we affich the error on the label for that
 
-    def inscriptionGui(self):
+    def inscription_gui(self):
         """
-        Fonction qui permet de s'inscrire a l'aide de la gui 
+        Function that allows you to register from the graphical interface
+        call when you click on the button
         """
-        Id = self.GetValidEntry(self.EntryId)
-        Pw =  self.GetValidEntry(self.EntryPw)
+        Id = self.get_valid_entry(self.EntryId)
+        # we get the username
+        Pw =  self.get_valid_entry(self.EntryPw)
+        # we get the password
         if Id and Pw != False:
+            # if the two inpus are not wrong
             etat = super().inscription(Id, Pw)
+            # we get what the connection returns
             if etat == "Incription succes":
-                print("Inscrit")
+                # if it good
                 super().connection(Id, Pw)
-                self.connectedUx()
+                self.connected_ux()
             else:
-                self.LabelInfoConnection.configure(text=etat)
+                # if it not login success
+                self.label_error.configure(text=etat)
+                # we affich the error on the label for that
 
-    def connectedUx(self):
+    def connected_ux(self):
         """
-        Fonction qui permet d'afficher la fenetre quand on est connecter
+        Function to display the window when a user is logged in
         """
+        self.frame_first_panel.grid_forget() 
+        # we remove the previous panel
 
-        self.Frame_First_Panel.grid_forget() # on enleve le panel de connection 
+        self.frame_connected = Frame(self.fen, bd="1")
+        self.frame_connected.grid(column=0, row=0, padx=5, pady=10, sticky=N) 
+        # we create a new panel for the window
 
-        self.FrameConnected = Frame(self.fen, bd="1") # Creation d'un nouveau panel
-        self.FrameConnected.grid(column=0, row=0, padx=5, pady=10, sticky=N) # on l'affiche
-
-        texteDeBase = super().readData()
-        self.text_widget = Text(self.FrameConnected, wrap='word', exportselection=0, font=self.policeMenu, height = 10, width = 50)  # Widget de text
+        texteDeBase = super().read_data()
+        # The data of the account
+        self.text_widget = Text(self.frame_connected, wrap='word', exportselection=0, font=self.policeMenu, height = 10, width = 50)  # Widget de text
         self.text_widget.insert("1.0", texteDeBase)
         self.text_widget.grid(column=0, row=0, padx=5, pady=10, sticky=NSEW) 
+        # Create where the text is written
 
-        ButtonSave = Button(self.FrameConnected, text='Save', command=self.SaveCommand)
-        ButtonSave.grid(column=0, row=1, padx=5, pady=10, sticky=N)
+        button_save = Button(self.frame_connected, text='Save', command=self.save_command)
+        button_save.grid(column=0, row=1, padx=5, pady=10, sticky=N)
+        # button to save the written text
 
-        self.FrameSetting = Frame(self.FrameConnected, bd="1")
-        self.FrameSetting.grid(column=1, row=0, padx=5, pady=10, sticky=NSEW)
+        self.frame_setting = Frame(self.frame_connected, bd="1")
+        self.frame_setting.grid(column=1, row=0, padx=5, pady=10, sticky=NSEW)
         self.setting = False
+        # frame to show the setting od the account
 
         CompteTexte = super().return_connected_user()
         Texte = "Setting of {} account".format(CompteTexte)
+        # retrieve user login
+
+        button_account = Button(self.frame_setting, text=Texte, font=self.policeMenu, command = self.click_setting)
+        button_account.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        # button display with username on top
         
-        ButtonCompte = Button(self.FrameSetting, text=Texte, font=self.policeMenu, command = self.clickSetting)
-        ButtonCompte.grid(column=0, row=0, padx=5, pady=10, sticky=N)
-        
-    def SaveCommand(self):
+    def save_command(self):
         """
-        Fonction qui permet de sauvegarder le texte 
+        function which allows to save the text in the widget into the account
         """
         Data = self.text_widget.get("1.0", END)
-        super().writeData(Data)
+        super().write_data(Data)
 
-    def clickSetting(self):
+    def click_setting(self):
         """
-        Fonction qui permet d'afficher les options quand on clique sur le profil
+        function to display the button by clicking on the settings
         """
         if self.setting == False:
-            # Si rien n'est afficher afficher
+            # if nothing is displayed
             self.setting = True
+            # we say that something is to display
+            self.button_logout = Button(self.frame_setting, text="Disconnection", font=self.policeMenu, command = self.decconection_gui)
+            self.button_logout.grid(column=0, row=1, padx=5, pady=2, sticky=N)
+            # button to log out
 
-            self.ButtonDeco = Button(self.FrameSetting, text="Disconnection", font=self.policeMenu, command = self.DeconnectionGui)
-            self.ButtonDeco.grid(column=0, row=1, padx=5, pady=2, sticky=N)
-
-            self.ButtonSuppr = Button(self.FrameSetting, text="Supprimer votre compte", font=self.policeMenu, command = self.SupprGui)
-            self.ButtonSuppr.grid(column=0, row=2, padx=5, pady=2, sticky=N)
+            self.boutton_delete = Button(self.frame_setting, text="Supprimer votre compte", font=self.policeMenu, command = self.delete_gui)
+            self.boutton_delete.grid(column=0, row=2, padx=5, pady=2, sticky=N)
+            # button to delete your account
 
         elif self.setting == True:
-            #sinon enlever 
+            # if something is displayed
             self.setting = False
-            self.ButtonDeco.grid_forget()
-            self.ButtonSuppr.grid_forget()
+            self.button_logout.grid_forget()
+            self.boutton_delete.grid_forget()
+            # we delete it
 
-    def DeconnectionGui(self):
+    def decconection_gui(self):
         """
-        Fonction pour se deconnecter a l'aide de la gui
+        function to disconnect from the graphical interface
         """
-
-        self.FrameConnected.grid_forget()
+        self.frame_connected.grid_forget()
+        # we delete the frame 
         super().deconnection()
-        self.initUx()
+        # we disconnect
+        self.init_ux_first_panel()
 
-    def SupprGui(self):
+    def delete_gui(self):
         """
-        Fonction pour supprimer son compte GUI
+        Function to delete your account
         """
         answer = askyesno(title='Delete account', message='Are you sure that you want to delete your account')
         if answer == True:
-            super().suppr()
-            self.DeconnectionGui()
+            # if the user want realy to delete is account
+            super().delete_account()
+            # we delete it 
+            self.decconection_gui()
         
 
 if __name__ == "__main__":
-    # Creation d'une fenetre 
     root = Tk()
     Application(root)
     root.mainloop()

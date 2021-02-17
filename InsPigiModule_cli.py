@@ -113,6 +113,7 @@ class FileAndHash:
             Parameters:
                 message -> string, a decrypt 
         """
+        data = bytes.fromhex(data)
         f = Fernet(self.keyData)
         decrypted = f.decrypt(
             data
@@ -236,7 +237,6 @@ class Compte(FileAndHash):
             data -> string, que on veut ecrire 
         """ 
         data = self.Encrypting(data) # On crypt l'input de l'utilisateur 
-        data = data.decode("utf-8") # on la converti
         Id = self.return_connected_user() # on recuper l'utilisateur connecter
         self.UserName[Id]["Data"] = data # on recrit par dessu les données de l'utlisateur 
         self.write_json() # on ecrit le nouveau dico 
@@ -248,7 +248,6 @@ class Compte(FileAndHash):
                 Id -> string, nom de l'utilisateur 
         """ 
         data = self.UserName[Id]["Data"] # On recupere la data de l'utilisateur Id 
-        data = data.encode()  # On la converti 
         data = self.Decrypting(data)  # on la decrypte avec la clé de l'utilisateur 
         return data
 
