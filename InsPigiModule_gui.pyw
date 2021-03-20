@@ -303,9 +303,8 @@ class Application(Compte):
         # the main app 
 
         self.fen.title("InsPigiModule")
-        # pathfile = os.path.dirname(os.path.abspath(__file__))
-        # self.fen.iconphoto(True, PhotoImage(file=pathfile + '\icone.png'))
-        # self.fen.geometry("450x400")
+        pathfile = os.path.dirname(os.path.abspath(__file__))
+        self.fen.iconphoto(True, PhotoImage(file=pathfile + '\icone.png'))
         self.policeMenu = ('Helvetic', 10)
         # we indicate the police
         self.init_ux_first_panel()
@@ -433,7 +432,7 @@ class Application(Compte):
             return False
         else:
             # if the entry is corect
-            return widget.get() 
+            return widget.get().strip()
             
     def connection_gui(self):
         """
@@ -501,7 +500,7 @@ class Application(Compte):
         # button to save the written text
 
         self.frame_setting = Frame(self.frame_connected, bd="1")
-        self.frame_setting.grid(column=1, row=0, padx=5, pady=10, sticky=NSEW)
+        self.frame_setting.grid(column=1, row=0, padx=5, pady=10, sticky=NSEW ) 
         self.setting = False
         # frame to show the setting od the account
 
@@ -510,7 +509,7 @@ class Application(Compte):
         # retrieve user login
 
         button_account = Button(self.frame_setting, text=Texte, font=self.policeMenu, command = self.click_setting)
-        button_account.grid(column=0, row=0, padx=5, pady=10, sticky=N)
+        button_account.grid(column=0, row=0, padx=5, pady=10, sticky=NSEW )
         # button display with username on top
         
     def save_command(self):
@@ -552,6 +551,7 @@ class Application(Compte):
         super().deconnection()
         # we disconnect
         self.init_ux_first_panel()
+        self.sign_in_panel()
 
     def delete_gui(self):
         """
